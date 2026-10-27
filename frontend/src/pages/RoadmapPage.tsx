@@ -10,8 +10,6 @@ import {
   BookOpen,
   Clock,
   Briefcase,
-  ChevronRight,
-  TrendingUp,
   Brain,
   History,
   AlertCircle,
@@ -29,7 +27,7 @@ const RoadmapPage: React.FC = () => {
   const [roadmaps, setRoadmaps] = useState<Roadmap[]>([]);
   const [currentRoadmap, setCurrentRoadmap] = useState<RoadmapData | null>(null);
   const [currentRoadmapId, setCurrentRoadmapId] = useState<string | null>(null);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen] = useState(true);
   const [completedTopics, setCompletedTopics] = useState<Set<string>>(new Set());
 
   // Calculate progress
@@ -75,6 +73,7 @@ const RoadmapPage: React.FC = () => {
     if (user) {
       fetchRoadmaps();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const fetchRoadmaps = async () => {

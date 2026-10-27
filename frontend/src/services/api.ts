@@ -15,7 +15,6 @@ import {
   TutorChatResponse,
   UserStats,
   ProgressResponse,
-  RoadmapProgressRecord,
   RoadmapProgressDetailResponse,
   SaveProgressResponse,
   QuizGenerationResponse

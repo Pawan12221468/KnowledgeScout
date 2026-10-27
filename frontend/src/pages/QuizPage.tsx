@@ -2,10 +2,10 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import apiService from '../services/api';
-import { QuizData, QuizQuestion } from '../types/api';
+import { QuizData } from '../types/api';
 import {
   Brain, Search, CheckCircle, XCircle, ChevronRight,
-  Trophy, RefreshCcw, AlertCircle, Sparkles, RotateCcw,
+  Trophy, AlertCircle, Sparkles, RotateCcw,
   Loader2
 } from 'lucide-react';
 

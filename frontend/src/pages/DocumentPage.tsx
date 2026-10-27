@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import apiService from '../services/api';
-import { Document, ChatSessionResponse, MessagesResponse } from '../types/api';
+import { Document, ChatSessionResponse } from '../types/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FileText, ArrowLeft, Loader2, Sparkles, AlertTriangle, MessageSquare, Tag, AlignLeft, Send
@@ -92,7 +92,7 @@ const DocumentPage: React.FC = () => {
     setMessages(prev => [...prev, { id: tempId, role: 'user', content: currentInput }]);
 
     try {
-      const res = await apiService.sendMessage(sessionId, currentInput, user.id);
+      await apiService.sendMessage(sessionId, currentInput, user.id);
       // Re-fetch messages to get precise DB state and AI response
       const msgsRes = await apiService.getChatSession(sessionId, user.id);
       if (msgsRes.messages) {

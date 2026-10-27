@@ -71,7 +71,6 @@ app.get('/api/health', (req, res) => {
 import authRoutes from './routes/auth';
 import documentRoutes from './routes/documents';
 import chatRoutes from './routes/chat';
-import aiRoutes from './routes/ai';
 import adminRoutes from './routes/admin';
 import roadmapRoutes from './routes/roadmaps';
 import tutorRoutes from './routes/tutor';
@@ -88,7 +87,6 @@ app.use('/api/roadmaps', roadmapRoutes);
 app.use('/api/tutor', tutorRoutes);
 app.use('/api/progress', progressRoutes);
 app.use('/api/quiz', quizRoutes);
-// app.use('/api', aiRoutes); // Commented out to avoid route conflicts
 
 // Error handling middleware
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
