@@ -147,12 +147,12 @@ const RoadmapPage: React.FC = () => {
                 key={rm.id}
                 onClick={() => handleSelectHistory(rm)}
                 className={`w-full text-left px-3 py-2 rounded-xl text-sm transition-all duration-200 ${
-                  currentRoadmap?.topic === rm.content.topic
+                  currentRoadmapId === rm.id
                     ? 'bg-indigo-500/15 text-indigo-300 border border-indigo-500/30'
                     : 'text-slate-400 hover:bg-white/5 hover:text-white border border-transparent'
                 }`}
               >
-                <div className="truncate">{rm.content.topic}</div>
+                <div className="truncate font-medium">{rm.content?.topic || rm.topic}</div>
                 <div className="text-xs text-slate-600 mt-1">
                   {new Date(rm.createdAt).toLocaleDateString()}
                 </div>

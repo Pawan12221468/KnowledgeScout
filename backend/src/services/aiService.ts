@@ -81,65 +81,67 @@ class AiService {
    * Generates a high-quality fallback roadmap if the AI service is unreachable or errors.
    */
   private createFallbackRoadmap(topic: string): any {
+    const cleanTopic = topic.trim();
+    const formattedTopic = cleanTopic.charAt(0).toUpperCase() + cleanTopic.slice(1);
     return {
-      topic: topic,
-      description: `A comprehensive, step-by-step learning journey to master ${topic} from fundamentals to production-ready skills.`,
+      topic: formattedTopic,
+      description: `A comprehensive, step-by-step learning journey to master ${formattedTopic} from fundamentals to production-ready skills.`,
       estimatedTotalTime: '3-4 months',
       phases: [
         {
-          name: 'Phase 1: Foundations & Core Concepts',
+          name: `Phase 1: ${formattedTopic} Foundations & Core Concepts`,
           level: 'Beginner',
           duration: '3-4 weeks',
           topics: [
-            `Introduction and Core Principles of ${topic}`,
-            'Environment Setup, Tooling & Ecosystem Overview',
-            'Key Syntax, Vocabulary & Basic Architecture',
-            'Hands-on Hello World & Fundamental Building Blocks'
+            `Introduction and Core Principles of ${formattedTopic}`,
+            `${formattedTopic} Environment Setup, Modern Tooling & Ecosystem`,
+            `${formattedTopic} Architecture, Syntax & Basic Building Blocks`,
+            `Hands-on Hello World & Fundamental Components in ${formattedTopic}`
           ],
           projects: [
-            `Starter project: Build a basic working application or prototype using ${topic}`
+            `Starter project: Build a working application or prototype using ${formattedTopic}`
           ]
         },
         {
-          name: 'Phase 2: Intermediate Techniques & Practical Application',
+          name: `Phase 2: Intermediate ${formattedTopic} & Practical Architecture`,
           level: 'Intermediate',
           duration: '4 weeks',
           topics: [
-            'State Management, Data Flow & Best Practices',
-            'Modular Architecture, Design Patterns & Component Organization',
-            'API Integration, Asynchronous Programming & Data Handling',
-            'Debugging, Error Handling & Logging Strategies'
+            `State Management and Data Flow in ${formattedTopic}`,
+            `Modular Architecture and Component Organization`,
+            `API Integration, Async Data & Services with ${formattedTopic}`,
+            `Debugging, Error Handling & Best Practices`
           ],
           projects: [
-            `Intermediate project: Full CRUD application with API integration and state management`
+            `Intermediate project: Full CRUD application with API integration and state management in ${formattedTopic}`
           ]
         },
         {
-          name: 'Phase 3: Advanced Patterns & Optimization',
+          name: `Phase 3: Advanced ${formattedTopic} Patterns & Optimization`,
           level: 'Advanced',
           duration: '3-4 weeks',
           topics: [
-            'Performance Profiling, Memory Management & Optimization',
-            'Security Best Practices, Authentication & Authorization',
-            'Automated Testing: Unit, Integration & End-to-End Tests',
-            'Architectural Scaling & Design Considerations'
+            `Performance Profiling, Memory Management & Optimization in ${formattedTopic}`,
+            `Security Best Practices, Authentication & Authorization`,
+            `Automated Testing: Unit, Integration & Component Tests for ${formattedTopic}`,
+            `Architectural Scaling & Design Considerations`
           ],
           projects: [
-            `Advanced project: High-performance, secure feature module with automated test coverage`
+            `Advanced project: High-performance, secure module with automated test coverage`
           ]
         },
         {
-          name: 'Phase 4: Capstone & Production Deployment',
+          name: `Phase 4: Capstone & Production Deployment`,
           level: 'Advanced',
           duration: '3-4 weeks',
           topics: [
-            'CI/CD Pipelines, Containerization & Cloud Deployment',
-            'Monitoring, Observability & Analytics',
-            'Code Review, Documentation & Open Source Collaboration',
-            'Portfolio Presentation & Real-world Project Polish'
+            `CI/CD Pipelines, Containerization & Cloud Deployment for ${formattedTopic}`,
+            `Monitoring, Observability & Analytics`,
+            `Code Review, Documentation & Production Readiness`,
+            `Portfolio Presentation & Real-world Project Polish`
           ],
           projects: [
-            `Production Capstone: Fully deployed, documented, and tested real-world application`
+            `Production Capstone: Fully deployed, documented, and tested real-world application in ${formattedTopic}`
           ]
         }
       ]
@@ -282,20 +284,28 @@ ${documentText}`;
   }
 
   async generateRoadmap(topic: string): Promise<any> {
-    const systemMessage = 'You are an expert career and learning path advisor. Generate a detailed learning roadmap in JSON format.';
-    const prompt = `Create a detailed learning roadmap for the topic: "${topic}".
-Your response MUST be a valid JSON object with the following structure:
+    const cleanTopic = topic.trim();
+    const formattedTopic = cleanTopic.charAt(0).toUpperCase() + cleanTopic.slice(1);
+
+    const systemMessage = 'You are an expert career and learning path advisor. Generate a detailed learning roadmap strictly in JSON format.';
+    const prompt = `Create a detailed, comprehensive learning roadmap specifically for: "${formattedTopic}".
+
+CRITICAL INSTRUCTIONS:
+1. FOCUS EXCLUSIVELY ON "${formattedTopic}": Every single phase, topic, concept, and project MUST directly focus on ${formattedTopic}.
+2. NO PREREQUISITE-ONLY PHASES: Do NOT dedicate Phase 1 or any other phase to separate prerequisite languages or general basics (for example: if the topic is React, do NOT make Phase 1 about vanilla JavaScript, HTML, CSS, or DOM manipulation; assume prerequisites are already understood and start Phase 1 DIRECTLY with ${formattedTopic} fundamentals like project setup with modern tooling, JSX, functional components, props, useState hook, event handling, and core architecture).
+3. The roadmap MUST systematically progress through ${formattedTopic} beginner, intermediate, advanced architectures, state management, ecosystem tools, and production capstone projects.
+4. Your response MUST be a valid JSON object strictly matching this structure:
 {
-  "topic": "${topic}",
-  "description": "A short overview of what will be learned.",
-  "estimatedTotalTime": "e.g., 3 months",
+  "topic": "${formattedTopic}",
+  "description": "A comprehensive overview of what will be learned.",
+  "estimatedTotalTime": "e.g., 3-4 months",
   "phases": [
     {
-      "name": "Phase 1: Foundations",
+      "name": "Phase 1: ${formattedTopic} Foundations & Core Components",
       "level": "Beginner",
       "duration": "e.g., 4 weeks",
-      "topics": ["Concept 1", "Concept 2"],
-      "projects": ["Project 1 description"]
+      "topics": ["Specific ${formattedTopic} concept 1", "Specific ${formattedTopic} concept 2"],
+      "projects": ["Hands-on ${formattedTopic} project description"]
     }
   ]
 }`;
@@ -307,16 +317,16 @@ Your response MUST be a valid JSON object with the following structure:
 
       if (Array.isArray(root.phases) && root.phases.length > 0) {
         return {
-          topic: root.topic || topic,
-          description: root.description || `Comprehensive learning roadmap for ${topic}.`,
-          estimatedTotalTime: root.estimatedTotalTime || '3 months',
+          topic: root.topic || formattedTopic,
+          description: root.description || `Comprehensive learning roadmap for ${formattedTopic}.`,
+          estimatedTotalTime: root.estimatedTotalTime || '3-4 months',
           phases: root.phases.map((phase: any, idx: number) => ({
-            name: phase.name || `Phase ${idx + 1}: Foundations`,
+            name: phase.name || `Phase ${idx + 1}: ${formattedTopic} Architecture`,
             level: phase.level || (idx === 0 ? 'Beginner' : idx === 1 ? 'Intermediate' : 'Advanced'),
             duration: phase.duration || '4 weeks',
             topics: Array.isArray(phase.topics)
               ? phase.topics.map((t: any) => typeof t === 'string' ? t : (t.title || t.name || String(t)))
-              : ['Core Fundamentals', 'Practical Basics'],
+              : [`${formattedTopic} Core Fundamentals`, 'Practical Implementation'],
             projects: Array.isArray(phase.projects)
               ? phase.projects.map((p: any) => typeof p === 'string' ? p : (p.title || p.name || String(p)))
               : [`Hands-on project for ${phase.name || 'Phase ' + (idx + 1)}`]
@@ -328,7 +338,7 @@ Your response MUST be a valid JSON object with the following structure:
     }
 
     // High quality fallback roadmap if AI generation or parsing failed
-    return this.createFallbackRoadmap(topic);
+    return this.createFallbackRoadmap(formattedTopic);
   }
 
   async tutorChat(
