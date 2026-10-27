@@ -2,10 +2,12 @@ import Groq from 'groq-sdk';
 
 class AiService {
   private groq: Groq | null;
-  private model: string = 'llama-3.1-8b-instant';
+  private model: string;
+  private fallbackModels: string[] = ['qwen/qwen3.8-27b', 'openai/gpt-oss-120b'];
 
   constructor() {
     const apiKey = process.env.GROQ_API_KEY;
+    this.model = process.env.GROQ_MODEL || 'qwen/qwen3.8-27b';
     if (!apiKey) {
       console.warn('GROQ_API_KEY is not set in environment variables. AI features will be disabled.');
       this.groq = null;
@@ -14,37 +16,192 @@ class AiService {
     this.groq = new Groq({
       apiKey: apiKey,
     });
-    console.log('Groq AI service initialized successfully');
+    console.log(`Groq AI service initialized successfully with model: ${this.model}`);
   }
 
   /**
-   * Reusable function to generate AI response
+   * Helper to safely extract and parse JSON from LLM responses,
+   * handling markdown code blocks, outer conversational text, or formatting issues.
    */
-  async generateAIResponse(prompt: string, systemMessage?: string, responseFormat?: { type: 'json_object' }): Promise<string> {
+  private extractAndParseJSON(text: string): any {
+    if (!text || typeof text !== 'string') {
+      throw new Error('Empty response received from AI model');
+    }
+
+    // 1. Direct parse attempt
     try {
-      if (!this.groq) {
-        return 'AI is temporarily unavailable, please try again.';
+      return JSON.parse(text);
+    } catch (_) {
+      // Continue to cleanup strategies
+    }
+
+    let cleaned = text.trim();
+
+    // 2. Strip markdown code fences if present (```json ... ``` or ``` ...)
+    if (cleaned.startsWith('```')) {
+      cleaned = cleaned.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim();
+      try {
+        return JSON.parse(cleaned);
+      } catch (_) {
+        // Continue
       }
+    }
 
-      const messages: any[] = [];
-      if (systemMessage) {
-        messages.push({ role: 'system', content: systemMessage });
+    // 3. Extract JSON object or array bounds
+    const firstBrace = cleaned.indexOf('{');
+    const lastBrace = cleaned.lastIndexOf('}');
+    const firstBracket = cleaned.indexOf('[');
+    const lastBracket = cleaned.lastIndexOf(']');
+
+    let candidate = '';
+    if (firstBrace !== -1 && (firstBracket === -1 || firstBrace < firstBracket) && lastBrace > firstBrace) {
+      candidate = cleaned.substring(firstBrace, lastBrace + 1);
+    } else if (firstBracket !== -1 && lastBracket > firstBracket) {
+      candidate = cleaned.substring(firstBracket, lastBracket + 1);
+    }
+
+    if (candidate) {
+      try {
+        return JSON.parse(candidate);
+      } catch (_) {
+        // Fix potential trailing commas before closing braces/brackets
+        const fixed = candidate.replace(/,\s*([}\]])/g, '$1');
+        try {
+          return JSON.parse(fixed);
+        } catch (_) {
+          // Continue
+        }
       }
-      messages.push({ role: 'user', content: prompt });
+    }
 
-      const completion = await this.groq.chat.completions.create({
-        messages: messages,
-        model: this.model,
-        response_format: responseFormat,
-        temperature: 0.7,
-        max_tokens: 4096,
-      });
+    throw new Error(`Failed to parse JSON from AI response: ${text.slice(0, 200)}`);
+  }
 
-      return completion.choices[0]?.message?.content || 'AI is temporarily unavailable, please try again.';
-    } catch (error: any) {
-      console.error('Groq API Error:', error);
+  /**
+   * Generates a high-quality fallback roadmap if the AI service is unreachable or errors.
+   */
+  private createFallbackRoadmap(topic: string): any {
+    return {
+      topic: topic,
+      description: `A comprehensive, step-by-step learning journey to master ${topic} from fundamentals to production-ready skills.`,
+      estimatedTotalTime: '3-4 months',
+      phases: [
+        {
+          name: 'Phase 1: Foundations & Core Concepts',
+          level: 'Beginner',
+          duration: '3-4 weeks',
+          topics: [
+            `Introduction and Core Principles of ${topic}`,
+            'Environment Setup, Tooling & Ecosystem Overview',
+            'Key Syntax, Vocabulary & Basic Architecture',
+            'Hands-on Hello World & Fundamental Building Blocks'
+          ],
+          projects: [
+            `Starter project: Build a basic working application or prototype using ${topic}`
+          ]
+        },
+        {
+          name: 'Phase 2: Intermediate Techniques & Practical Application',
+          level: 'Intermediate',
+          duration: '4 weeks',
+          topics: [
+            'State Management, Data Flow & Best Practices',
+            'Modular Architecture, Design Patterns & Component Organization',
+            'API Integration, Asynchronous Programming & Data Handling',
+            'Debugging, Error Handling & Logging Strategies'
+          ],
+          projects: [
+            `Intermediate project: Full CRUD application with API integration and state management`
+          ]
+        },
+        {
+          name: 'Phase 3: Advanced Patterns & Optimization',
+          level: 'Advanced',
+          duration: '3-4 weeks',
+          topics: [
+            'Performance Profiling, Memory Management & Optimization',
+            'Security Best Practices, Authentication & Authorization',
+            'Automated Testing: Unit, Integration & End-to-End Tests',
+            'Architectural Scaling & Design Considerations'
+          ],
+          projects: [
+            `Advanced project: High-performance, secure feature module with automated test coverage`
+          ]
+        },
+        {
+          name: 'Phase 4: Capstone & Production Deployment',
+          level: 'Advanced',
+          duration: '3-4 weeks',
+          topics: [
+            'CI/CD Pipelines, Containerization & Cloud Deployment',
+            'Monitoring, Observability & Analytics',
+            'Code Review, Documentation & Open Source Collaboration',
+            'Portfolio Presentation & Real-world Project Polish'
+          ],
+          projects: [
+            `Production Capstone: Fully deployed, documented, and tested real-world application`
+          ]
+        }
+      ]
+    };
+  }
+
+  /**
+   * Reusable function to generate AI response with automatic model fallbacks
+   */
+  async generateAIResponse(
+    prompt: string,
+    systemMessage?: string,
+    responseFormat?: { type: 'json_object' }
+  ): Promise<string> {
+    if (!this.groq) {
+      if (responseFormat?.type === 'json_object') {
+        throw new Error('Groq AI service is not initialized. Please verify your GROQ_API_KEY.');
+      }
       return 'AI is temporarily unavailable, please try again.';
     }
+
+    const messages: any[] = [];
+    if (systemMessage) {
+      messages.push({ role: 'system', content: systemMessage });
+    }
+    messages.push({ role: 'user', content: prompt });
+
+    const modelsToTry = [this.model, ...this.fallbackModels.filter(m => m !== this.model)];
+    let lastError: any = null;
+
+    for (const modelToUse of modelsToTry) {
+      try {
+        const completion = await this.groq.chat.completions.create({
+          messages: messages,
+          model: modelToUse,
+          response_format: responseFormat,
+          temperature: 0.7,
+          max_tokens: 4096,
+        });
+
+        const content = completion.choices[0]?.message?.content;
+        if (content) {
+          if (this.model !== modelToUse) {
+            console.log(`Switched default Groq model from ${this.model} to working model: ${modelToUse}`);
+            this.model = modelToUse;
+          }
+          return content;
+        }
+      } catch (error: any) {
+        lastError = error;
+        console.warn(`Groq API Error with model ${modelToUse}:`, error.message || error);
+        if (error.status === 404 || error.status === 400 || error.code === 'model_not_found') {
+          continue;
+        }
+        break;
+      }
+    }
+
+    if (responseFormat?.type === 'json_object') {
+      throw new Error(lastError?.message || 'AI service failed to generate a JSON response.');
+    }
+    return 'AI is temporarily unavailable, please try again.';
   }
 
   // --- GeminiService Compatibility Methods ---
@@ -99,12 +256,13 @@ Respond in a natural, conversational way. Do not use JSON format.`;
     const prompt = `Document content:
 ${documentText}`;
 
-    const response = await this.generateAIResponse(prompt, systemMessage, { type: 'json_object' });
     try {
-      const parsed = JSON.parse(response);
+      const response = await this.generateAIResponse(prompt, systemMessage, { type: 'json_object' });
+      const parsed = this.extractAndParseJSON(response);
       return Array.isArray(parsed) ? parsed : (parsed.keyPoints || parsed.points || [response]);
     } catch (e) {
-      return [response];
+      console.warn('Failed to parse key points JSON, falling back:', e);
+      return ['Key point extraction unavailable at this time.'];
     }
   }
 
@@ -113,12 +271,13 @@ ${documentText}`;
     const prompt = `Document content:
 ${documentText}`;
 
-    const response = await this.generateAIResponse(prompt, systemMessage, { type: 'json_object' });
     try {
-      const parsed = JSON.parse(response);
+      const response = await this.generateAIResponse(prompt, systemMessage, { type: 'json_object' });
+      const parsed = this.extractAndParseJSON(response);
       return Array.isArray(parsed) ? parsed : (parsed.questions || [response]);
     } catch (e) {
-      return [response];
+      console.warn('Failed to parse questions JSON, falling back:', e);
+      return ['What are the main concepts discussed in this document?'];
     }
   }
 
@@ -141,13 +300,35 @@ Your response MUST be a valid JSON object with the following structure:
   ]
 }`;
 
-    const response = await this.generateAIResponse(prompt, systemMessage, { type: 'json_object' });
     try {
-      return JSON.parse(response);
-    } catch (e) {
-      console.error('Failed to parse roadmap JSON:', response);
-      throw new Error('Failed to parse generated roadmap JSON');
+      const response = await this.generateAIResponse(prompt, systemMessage, { type: 'json_object' });
+      const parsed = this.extractAndParseJSON(response);
+      const root = parsed.roadmap || parsed.data || parsed;
+
+      if (Array.isArray(root.phases) && root.phases.length > 0) {
+        return {
+          topic: root.topic || topic,
+          description: root.description || `Comprehensive learning roadmap for ${topic}.`,
+          estimatedTotalTime: root.estimatedTotalTime || '3 months',
+          phases: root.phases.map((phase: any, idx: number) => ({
+            name: phase.name || `Phase ${idx + 1}: Foundations`,
+            level: phase.level || (idx === 0 ? 'Beginner' : idx === 1 ? 'Intermediate' : 'Advanced'),
+            duration: phase.duration || '4 weeks',
+            topics: Array.isArray(phase.topics)
+              ? phase.topics.map((t: any) => typeof t === 'string' ? t : (t.title || t.name || String(t)))
+              : ['Core Fundamentals', 'Practical Basics'],
+            projects: Array.isArray(phase.projects)
+              ? phase.projects.map((p: any) => typeof p === 'string' ? p : (p.title || p.name || String(p)))
+              : [`Hands-on project for ${phase.name || 'Phase ' + (idx + 1)}`]
+          }))
+        };
+      }
+    } catch (e: any) {
+      console.error('Failed to generate AI roadmap, falling back to structured roadmap:', e.message || e);
     }
+
+    // High quality fallback roadmap if AI generation or parsing failed
+    return this.createFallbackRoadmap(topic);
   }
 
   async tutorChat(
@@ -192,16 +373,21 @@ Your response MUST be a valid JSON object strictly matching this schema exactly:
 Document content:
 ${documentText.substring(0, 30000)}`;
 
-    const response = await this.generateAIResponse(prompt, systemMessage, { type: 'json_object' });
     try {
-      const insights = JSON.parse(response);
+      const response = await this.generateAIResponse(prompt, systemMessage, { type: 'json_object' });
+      const insights = this.extractAndParseJSON(response);
       return {
         summary: insights.summary || 'Summary unavailable.',
         importantPoints: Array.isArray(insights.importantPoints) ? insights.importantPoints : [],
         keywords: Array.isArray(insights.keywords) ? insights.keywords : []
       };
     } catch (e) {
-      throw new Error('Failed to extract insights');
+      console.warn('Failed to extract insights, returning fallbacks:', e);
+      return {
+        summary: 'Document insights are temporarily unavailable.',
+        importantPoints: [],
+        keywords: []
+      };
     }
   }
 
@@ -242,11 +428,12 @@ Your response MUST be a valid JSON object strictly matching this schema exactly:
 }
 Ensure exactly 10 questions are generated.`;
 
-    const response = await this.generateAIResponse(prompt, systemMessage, { type: 'json_object' });
     try {
-      return JSON.parse(response);
+      const response = await this.generateAIResponse(prompt, systemMessage, { type: 'json_object' });
+      return this.extractAndParseJSON(response);
     } catch (e) {
-      throw new Error('Failed to generate quiz');
+      console.error('Failed to generate quiz:', e);
+      throw new Error('Failed to generate quiz. Please try again.');
     }
   }
 }
