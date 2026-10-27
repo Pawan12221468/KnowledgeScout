@@ -5,16 +5,16 @@ REM Check if .env exists
 if not exist .env (
     echo 📝 Creating .env file from template...
     copy env.example .env
-    echo ⚠️  Please edit .env file and add your GEMINI_API_KEY
+    echo ⚠️  Please edit .env file and add your GROQ_API_KEY
     echo    Then run this script again.
     pause
     exit /b 1
 )
 
-REM Check if GEMINI_API_KEY is set
-findstr /C:"GEMINI_API_KEY=your-gemini-api-key-here" .env >nul
+REM Check if GROQ_API_KEY is set
+findstr /C:"GROQ_API_KEY=your-groq-api-key-here" .env >nul
 if %errorlevel% equ 0 (
-    echo ⚠️  Please set your GEMINI_API_KEY in .env file
+    echo ⚠️  Please set your GROQ_API_KEY in .env file
     pause
     exit /b 1
 )

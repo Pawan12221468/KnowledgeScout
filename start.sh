@@ -6,16 +6,16 @@ echo "🚀 Starting Knowledge Scout Application..."
 if [ ! -f .env ]; then
     echo "📝 Creating .env file from template..."
     cp env.example .env
-    echo "⚠️  Please edit .env file and add your GEMINI_API_KEY"
+    echo "⚠️  Please edit .env file and add your GROQ_API_KEY"
     echo "   Then run this script again."
     exit 1
 fi
 
-# Check if GEMINI_API_KEY is set
-if ! grep -q "GEMINI_API_KEY=your-gemini-api-key-here" .env; then
+# Check if GROQ_API_KEY is set
+if ! grep -q "GROQ_API_KEY=your-groq-api-key-here" .env; then
     echo "✅ Environment configured"
 else
-    echo "⚠️  Please set your GEMINI_API_KEY in .env file"
+    echo "⚠️  Please set your GROQ_API_KEY in .env file"
     exit 1
 fi
 

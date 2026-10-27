@@ -1,18 +1,18 @@
 // Knowledge Scout Database Schema
-// This schema defines the data models for the Knowledge Scout application
+// Configured for MongoDB with Prisma ORM
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "mongodb"
   url      = env("DATABASE_URL")
 }
 
 // User model for authentication and user management
 model User {
-  id        String   @id @default(cuid())
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
   email     String   @unique
   name      String
   avatar    String?
@@ -22,28 +22,28 @@ model User {
   updatedAt DateTime @updatedAt
 
   // Relations
-  documents     Document[]
-  chatSessions  ChatSession[]
-  teams         TeamMember[]
-  createdTeams  Team[]        @relation("TeamCreator")
-  roadmaps      Roadmap[]
-  tutorSessions TutorSession[]
-  progressRecords RoadmapProgress[]
-  ownedClassrooms Classroom[]   @relation("ClassroomTeacher")
+  documents        Document[]
+  chatSessions     ChatSession[]
+  teams            TeamMember[]
+  createdTeams     Team[]                 @relation("TeamCreator")
+  roadmaps         Roadmap[]
+  tutorSessions    TutorSession[]
+  progressRecords  RoadmapProgress[]
+  ownedClassrooms  Classroom[]            @relation("ClassroomTeacher")
   joinedClassrooms ClassroomStudent[]
-  submissions   AssignmentSubmission[]
+  submissions      AssignmentSubmission[]
 
   @@map("users")
 }
 
 // Team model for collaboration
 model Team {
-  id          String   @id @default(cuid())
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
   name        String
   description String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  creatorId   String
+  creatorId   String   @db.ObjectId
 
   // Relations
   creator User         @relation("TeamCreator", fields: [creatorId], references: [id], onDelete: Cascade)
@@ -54,9 +54,9 @@ model Team {
 
 // Team membership model
 model TeamMember {
-  id     String @id @default(cuid())
-  userId String
-  teamId String
+  id     String @id @default(auto()) @map("_id") @db.ObjectId
+  userId String @db.ObjectId
+  teamId String @db.ObjectId
   role   String @default("member") // member, admin, owner
 
   // Relations
@@ -69,14 +69,14 @@ model TeamMember {
 
 // Classroom model for LMS
 model Classroom {
-  id          String   @id @default(cuid())
-  name        String
-  code        String   @unique // For students to join
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  teacherId   String
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  code      String   @unique // For students to join
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  teacherId String   @db.ObjectId
 
-  teacher     User     @relation("ClassroomTeacher", fields: [teacherId], references: [id], onDelete: Cascade)
+  teacher     User               @relation("ClassroomTeacher", fields: [teacherId], references: [id], onDelete: Cascade)
   students    ClassroomStudent[]
   assignments Assignment[]
 
@@ -85,13 +85,13 @@ model Classroom {
 
 // Join table for Students and Classrooms
 model ClassroomStudent {
-  id          String   @id @default(cuid())
-  classroomId String
-  studentId   String
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  classroomId String   @db.ObjectId
+  studentId   String   @db.ObjectId
   joinedAt    DateTime @default(now())
 
-  classroom   Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
-  student     User      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  classroom Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  student   User      @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@unique([classroomId, studentId])
   @@map("classroom_students")
@@ -99,16 +99,16 @@ model ClassroomStudent {
 
 // Assignment links a Classroom to Study Materials/Roadmaps/Quizzes
 model Assignment {
-  id          String   @id @default(cuid())
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
   title       String
   description String?
-  type        String   // "document", "roadmap", "quiz"
-  referenceId String   // ID of the target resource
-  classroomId String
+  type        String // "document", "roadmap", "quiz"
+  referenceId String // ID of the target resource
+  classroomId String    @db.ObjectId
   dueDate     DateTime?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
 
-  classroom   Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  classroom   Classroom              @relation(fields: [classroomId], references: [id], onDelete: Cascade)
   submissions AssignmentSubmission[]
 
   @@map("assignments")
@@ -116,17 +116,17 @@ model Assignment {
 
 // Tracks student completion / scores for Assignments
 model AssignmentSubmission {
-  id           String   @id @default(cuid())
-  assignmentId String
-  studentId    String
-  status       String   @default("pending") // "pending", "completed"
-  score        Int?     // For quizzes
-  progress     Json?    // For tracking roadmap progress
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
+  assignmentId String    @db.ObjectId
+  studentId    String    @db.ObjectId
+  status       String    @default("pending") // "pending", "completed"
+  score        Int? // For quizzes
+  progress     Json? // For tracking roadmap progress
   submittedAt  DateTime?
-  updatedAt    DateTime @updatedAt
+  updatedAt    DateTime  @updatedAt
 
-  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
-  student      User       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  student    User       @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@unique([assignmentId, studentId])
   @@map("assignment_submissions")
@@ -134,23 +134,23 @@ model AssignmentSubmission {
 
 // Document model for uploaded files
 model Document {
-  id           String   @id @default(cuid())
-  title        String
-  filename     String
-  originalName String
-  filePath     String
-  fileSize     Int
-  mimeType     String
-  status       String   @default("processing") // processing, completed, error
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  title         String
+  filename      String
+  originalName  String
+  filePath      String
+  fileSize      Int
+  mimeType      String
+  status        String   @default("processing") // processing, completed, error
   extractedText String?
-  summary      String?
-  metadata     Json?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  userId       String
+  summary       String?
+  metadata      Json?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  userId        String   @db.ObjectId
 
   // Relations
-  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   chatSessions ChatSession[]
 
   @@map("documents")
@@ -158,16 +158,16 @@ model Document {
 
 // Chat session model for Q&A conversations
 model ChatSession {
-  id         String   @id @default(cuid())
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
   title      String?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
-  userId     String
-  documentId String
+  userId     String   @db.ObjectId
+  documentId String   @db.ObjectId
 
   // Relations
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  document Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
   messages Message[]
 
   @@map("chat_sessions")
@@ -175,11 +175,11 @@ model ChatSession {
 
 // Message model for chat conversations
 model Message {
-  id        String   @id @default(cuid())
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
   content   String
-  role      String   // user, assistant
+  role      String // user, assistant
   timestamp DateTime @default(now())
-  sessionId String
+  sessionId String   @db.ObjectId
 
   // Relations
   session ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
@@ -189,12 +189,12 @@ model Message {
 
 // Roadmap model for AI-generated learning paths
 model Roadmap {
-  id        String   @id @default(cuid())
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
   topic     String
   content   Json
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  userId    String
+  userId    String   @db.ObjectId
 
   // Relations
   user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -205,11 +205,11 @@ model Roadmap {
 
 // AI Tutor session model
 model TutorSession {
-  id        String   @id @default(cuid())
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
   topic     String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  userId    String
+  userId    String   @db.ObjectId
 
   // Relations
   user     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -220,11 +220,11 @@ model TutorSession {
 
 // AI Tutor message model
 model TutorMessage {
-  id        String   @id @default(cuid())
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
   content   String
-  role      String   // user, assistant
+  role      String // user, assistant
   timestamp DateTime @default(now())
-  sessionId String
+  sessionId String   @db.ObjectId
 
   // Relations
   session TutorSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
@@ -234,10 +234,10 @@ model TutorMessage {
 
 // Progress tracking for roadmap topics
 model RoadmapProgress {
-  id              String   @id @default(cuid())
-  roadmapId       String
-  userId          String
-  completedTopics Json     @default("[]")
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  roadmapId       String   @db.ObjectId
+  userId          String   @db.ObjectId
+  completedTopics Json
   lastActivityAt  DateTime @default(now())
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
